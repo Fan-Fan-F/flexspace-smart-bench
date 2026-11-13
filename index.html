@@ -69,6 +69,59 @@
       padding: 24px 32px;
     }
 
+    #webgl-canvas[hidden],
+    #startup-error[hidden],
+    .ui-layer[hidden],
+    #hotspot-container[hidden] {
+      display: none;
+    }
+
+    #startup-error {
+      position: absolute;
+      z-index: 20;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+      padding: 24px;
+      background: var(--bg-dark);
+    }
+
+    .startup-error-card {
+      width: min(100%, 440px);
+      padding: 24px;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      background: var(--panel-bg);
+    }
+
+    .startup-error-card p {
+      margin: 12px 0 20px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .startup-error-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .startup-error-actions button {
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 8px;
+      font: inherit;
+      color: var(--bg-dark);
+      background: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    .startup-error-actions a {
+      color: var(--accent-cyan);
+    }
+
     .interactive {
       pointer-events: auto;
     }
@@ -860,6 +913,17 @@
   <!-- WebGL Render Canvas -->
   <canvas id="webgl-canvas"></canvas>
 
+  <section id="startup-error" aria-labelledby="startup-error-title" hidden>
+    <div class="startup-error-card">
+      <h1 id="startup-error-title">3D 展厅暂时无法打开</h1>
+      <p id="startup-error-message" role="alert"></p>
+      <div class="startup-error-actions">
+        <button type="button" id="btn-retry-startup">重新加载</button>
+        <a href="blueprint.jpg">查看二维工程图</a>
+      </div>
+    </div>
+  </section>
+
   <!-- 3D Hotspot Screen Layer -->
   <div class="hotspot-container" id="hotspot-container"></div>
 
@@ -1113,6 +1177,7 @@
 
   <!-- Main Three.js Application Logic -->
   <script>
+  function startExhibit() {
     // --- 1. Canvas & Render Setup ---
     const canvas = document.getElementById('webgl-canvas');
     const renderer = new THREE.WebGLRenderer({
@@ -2527,7 +2592,6 @@
     let telemetryTimer = 0;
 
     function animate() {
-      requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
@@ -2582,6 +2646,7 @@
       updateHotspotsScreenPositions();
 
       renderer.render(scene, camera);
+      requestAnimationFrame(animate);
     }
     animate();
 
@@ -2595,6 +2660,31 @@
       if (isAutoRotate) controls.autoRotate = false;
     });
 
+  }
+
+  function showStartupError(message) {
+    document.getElementById('webgl-canvas').hidden = true;
+    document.getElementById('hotspot-container').hidden = true;
+    document.querySelector('.ui-layer').hidden = true;
+    document.getElementById('startup-error').hidden = false;
+    document.getElementById('startup-error-message').textContent = message;
+    const retry = document.getElementById('btn-retry-startup');
+    retry.addEventListener('click', () => window.location.reload());
+    retry.focus();
+  }
+
+  if (typeof window.THREE?.WebGLRenderer !== 'function' ||
+      typeof window.THREE?.OrbitControls !== 'function' ||
+      typeof window.gsap?.to !== 'function') {
+    showStartupError('3D 组件未能加载。请检查网络连接后重试。');
+  } else {
+    try {
+      startExhibit();
+    } catch (error) {
+      console.error('FlexSpace startup failed', error);
+      showStartupError('3D 场景启动失败。请在支持 WebGL 的浏览器中重试。');
+    }
+  }
   </script>
 </body>
 </html>
